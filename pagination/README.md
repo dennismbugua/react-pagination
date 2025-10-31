@@ -127,9 +127,3 @@ Open http://localhost:3000 to view the demo.
 - Wire `Pagination` to your backend with page/limit query params and return total counts.
 - Add analytics events: `page_change`, `page_view`, and measure conversions by page bucket.
 - Add integration tests that assert keyboard accessibility and ellipsis behavior.
-
-If you want, I can help wire this to a specific API or adapt the visuals to your brand.
-
----
-
-_Concise, product-oriented README to explain business value and technical integration of a pagination UI._
