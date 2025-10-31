@@ -1,102 +1,125 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 function Pagination({ pages = 10, setCurrentPage }) {
+  // Build pages array once per render
+  const numberOfPages = Array.from({ length: pages }, (_, i) => i + 1)
 
-  //Set number of pages
-  const numberOfPages = []
-  for (let i = 1; i <= pages; i++) {
-    numberOfPages.push(i)
-  }
-
-  // Current active button number
   const [currentButton, setCurrentButton] = useState(1)
-
-  // Array of buttons what we see on the page
   const [arrOfCurrButtons, setArrOfCurrButtons] = useState([])
+  const navRef = useRef(null)
 
+  // Compute the visible pagination items (numbers and ellipses)
   useEffect(() => {
-    let tempNumberOfPages = [...arrOfCurrButtons]
+    const total = numberOfPages.length
+    const current = currentButton
+    let temp = []
 
-    let dotsInitial = '...'
-    let dotsLeft = '... '
-    let dotsRight = ' ...'
-
-    if (numberOfPages.length < 6) {
-      tempNumberOfPages = numberOfPages
+    if (total <= 7) {
+      temp = numberOfPages
+    } else if (current <= 4) {
+      temp = [1, 2, 3, 4, 5, '...', total]
+    } else if (current >= total - 3) {
+      temp = [1, '...', total - 4, total - 3, total - 2, total - 1, total]
+    } else {
+      temp = [1, '...', current - 1, current, current + 1, '...', total]
     }
 
-    else if (currentButton >= 1 && currentButton <= 3) {
-      tempNumberOfPages = [1, 2, 3, 4, dotsInitial, numberOfPages.length]
+    setArrOfCurrButtons(temp)
+    // notify parent about the page change
+    if (typeof setCurrentPage === 'function') setCurrentPage(current)
+  }, [currentButton, pages])
+
+  // Reset when pages count changes
+  useEffect(() => {
+    setCurrentButton(1)
+  }, [pages])
+
+  // Keyboard navigation (Left/Right/Home/End)
+  useEffect(() => {
+    const el = navRef.current
+    if (!el) return
+
+    const onKey = (e) => {
+      if (e.key === 'ArrowLeft') {
+        setCurrentButton((p) => Math.max(1, p - 1))
+      } else if (e.key === 'ArrowRight') {
+        setCurrentButton((p) => Math.min(numberOfPages.length, p + 1))
+      } else if (e.key === 'Home') {
+        setCurrentButton(1)
+      } else if (e.key === 'End') {
+        setCurrentButton(numberOfPages.length)
+      }
     }
 
-    else if (currentButton === 4) {
-      const sliced = numberOfPages.slice(0, 5)
-      tempNumberOfPages = [...sliced, dotsInitial, numberOfPages.length]
-    }
+    el.addEventListener('keydown', onKey)
+    return () => el.removeEventListener('keydown', onKey)
+  }, [numberOfPages.length])
 
-    else if (currentButton > 4 && currentButton < numberOfPages.length - 2) {               // from 5 to 8 -> (10 - 2)
-      const sliced1 = numberOfPages.slice(currentButton - 2, currentButton)                 // sliced1 (5-2, 5) -> [4,5] 
-      const sliced2 = numberOfPages.slice(currentButton, currentButton + 1)                 // sliced1 (5, 5+1) -> [6]
-      tempNumberOfPages = ([1, dotsLeft, ...sliced1, ...sliced2, dotsRight, numberOfPages.length]) // [1, '...', 4, 5, 6, '...', 10]
-    }
-    
-    else if (currentButton > numberOfPages.length - 3) {                 // > 7
-      const sliced = numberOfPages.slice(numberOfPages.length - 4)       // slice(10-4) 
-      tempNumberOfPages = ([1, dotsLeft, ...sliced])                        
-    }
-    
-    else if (currentButton === dotsInitial) {
-      // [1, 2, 3, 4, "...", 10].length = 6 - 3  = 3 
-      // arrOfCurrButtons[3] = 4 + 1 = 5
-      // or 
-      // [1, 2, 3, 4, 5, "...", 10].length = 7 - 3 = 4
-      // [1, 2, 3, 4, 5, "...", 10][4] = 5 + 1 = 6
-      setCurrentButton(arrOfCurrButtons[arrOfCurrButtons.length-3] + 1) 
-    }
-    else if (currentButton === dotsRight) {
-      setCurrentButton(arrOfCurrButtons[3] + 2)
-    }
-
-    else if (currentButton === dotsLeft) {
-      setCurrentButton(arrOfCurrButtons[3] - 2)
-    }
-
-    setArrOfCurrButtons(tempNumberOfPages)
-    setCurrentPage(currentButton)
-  }, [currentButton])
-
+  const goPrev = () => setCurrentButton((p) => Math.max(1, p - 1))
+  const goNext = () => setCurrentButton((p) => Math.min(numberOfPages.length, p + 1))
 
   return (
-    <div className="pagination-container">
-      <a
-        href="#"
-        className={`${currentButton === 1 ? 'disabled' : ''}`}
-        onClick={() => setCurrentButton(prev => prev <= 1 ? prev : prev - 1)}
-      >
-        Prev
-      </a>
+    <nav
+      className="pagination"
+      aria-label="Pagination Navigation"
+      ref={navRef}
+      tabIndex={0} // allow keyboard focus for arrow navigation
+    >
+      <ul className="pagination-list" role="list">
+        <li>
+          <button
+            type="button"
+            className={`page-btn prev ${currentButton === 1 ? 'is-disabled' : ''}`}
+            onClick={goPrev}
+            disabled={currentButton === 1}
+            aria-label="Previous page"
+          >
+            <span aria-hidden>
+              {/* left caret */}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+          </button>
+        </li>
 
-      {arrOfCurrButtons.map(((item, index) => {
-        return <a
-          href="#"
-          key={index}
-          className={`${currentButton === item ? 'active' : ''}`}
-          onClick={() => setCurrentButton(item)}
-        >
-          {item}
-        </a>
-      }))}
+        {arrOfCurrButtons.map((item, idx) => (
+          <li key={String(item) + idx}>
+            {typeof item === 'number' ? (
+              <button
+                type="button"
+                className={`page-btn page-number ${currentButton === item ? 'is-active' : ''}`}
+                onClick={() => setCurrentButton(item)}
+                aria-current={currentButton === item ? 'page' : undefined}
+                aria-label={currentButton === item ? `Page ${item}, current page` : `Go to page ${item}`}
+              >
+                {item}
+              </button>
+            ) : (
+              <span className="page-ellipsis" aria-hidden="true">&hellip;</span>
+            )}
+          </li>
+        ))}
 
-      <a
-        href="#"
-        className={`${currentButton === numberOfPages.length ? 'disabled' : ''}`}
-        onClick={() => setCurrentButton(prev => prev >= numberOfPages.length ? prev : prev + 1)}
-      >
-        Next
-      </a>
-    </div>
-  );
+        <li>
+          <button
+            type="button"
+            className={`page-btn next ${currentButton === numberOfPages.length ? 'is-disabled' : ''}`}
+            onClick={goNext}
+            disabled={currentButton === numberOfPages.length}
+            aria-label="Next page"
+          >
+            <span aria-hidden>
+              {/* right caret */}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 6L15 12L9 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+          </button>
+        </li>
+      </ul>
+    </nav>
+  )
 }
-
 
 export default Pagination
